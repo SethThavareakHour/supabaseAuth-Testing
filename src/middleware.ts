@@ -1,29 +1,19 @@
-import { NextResponse } from 'next/server';
-import type { NextRequest } from 'next/server';
-import { createMiddlewareClient } from '@/utils/supabase/middleware';
+import { type NextRequest } from 'next/server'
+import { updateSession } from './utils/supabase/middleware'
 
 export async function middleware(request: NextRequest) {
-  const { supabase, response } = await createMiddlewareClient(request);
-  
-  const {
-    data: { session },
-  } = await supabase.auth.getSession();
-
-  // If there's no session and the user is trying to access a protected route
-  if (!session && request.nextUrl.pathname.startsWith('/dashboard')) {
-    const redirectUrl = new URL('/login', request.url);
-    redirectUrl.searchParams.set('redirect', request.nextUrl.pathname);
-    return NextResponse.redirect(redirectUrl);
-  }
-
-  // If there's a session and the user is trying to access auth routes
-  if (session && (request.nextUrl.pathname.startsWith('/login') || request.nextUrl.pathname.startsWith('/signup'))) {
-    return NextResponse.redirect(new URL('/dashboard', request.url));
-  }
-
-  return response;
+  return await updateSession(request)
 }
 
 export const config = {
-  matcher: ['/dashboard/:path*', '/login', '/signup',],
-};
+  matcher: [
+    /*
+     * Match all request paths except for the ones starting with:
+     * - _next/static (static files)
+     * - _next/image (image optimization files)
+     * - favicon.ico (favicon file)
+     * Feel free to modify this pattern to include more paths.
+     */
+    '/((?!_next/static|_next/image|favicon.ico|.*\\.(?:svg|png|jpg|jpeg|gif|webp)$).*)',
+  ],
+}
