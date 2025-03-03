@@ -18,17 +18,28 @@ export async function signUp(formData: FormData) {
     const supabase = await createClient();
 
     const credentials = {
-        username: formData.get("username") as string,
+        firstname: formData.get("firstname") as string,
+        lastname: formData.get("lastname") as string,
         email: formData.get("email") as string,
         password: formData.get("email") as string,
+        role: formData.get("role") as string,
     };
+
+    if (credentials.role !== 'student' && credentials.role !== 'recruiter') {
+        return {
+            status: "Invalid role. Must be 'student' or 'recruiter'",
+            user: null
+        };
+    }
 
     const { error, data } = await supabase.auth.signUp({
         email: credentials.email,
         password: credentials.password,
         options: {
             data: {
-                username: credentials.username,
+                firstname: credentials.firstname,
+                lastname: credentials.lastname,
+                role: credentials.role,
             }
         },
     });
@@ -76,7 +87,7 @@ export async function signIn(formData: FormData) {
         if (!existingUser) {
             const { error: insertError } = await supabase.from("user_profiles").insert({
                 email: data.user.email,
-                username: data?.user?.user_metadata?.email,
+                username: data?.user?.user_metadata?.username,
             });
             if (insertError) {
                 return {
