@@ -10,10 +10,13 @@ export type StudentProfile = {
   email?: string;
   firstname?: string;
   lastname?: string;
-  bio?: string;
+  graduation_type?: string;
+  self_promotion?: string;
   education?: string[];
+  enrollment_date?: string;
+  graduation_date?: string;
   skills?: string[];
-  experience?: string[];
+  work_experience?: string[];
   portfolio_url?: string;
   linkedin_url?: string;
   github_url?: string;
@@ -59,10 +62,13 @@ export async function createStudentProfile(formData: StudentProfile) {
     email: session.user.email,
     firstname: formData.firstname,
     lastname: formData.lastname,
-    bio: formData.bio,
+    self_promotion: formData.self_promotion,
+    enrollment_date: formData.enrollment_date,
+    graduation_date: formData.graduation_date,
+    graduation_type: formData.graduation_type,
     education: formData.education,
     skills: formData.skills,
-    experience: formData.experience,
+    work_experience: formData.work_experience,
     portfolio_url: formData.portfolio_url,
     linkedin_url: formData.linkedin_url,
     github_url: formData.github_url,
@@ -70,7 +76,7 @@ export async function createStudentProfile(formData: StudentProfile) {
   };
   console.log("Profile Data", profileData);
   const { data, error } = await supabase
-    .from("student_basic")
+    .from("student_detail")
     .insert(profileData);
   // .select()
   // .single();
@@ -172,13 +178,20 @@ export async function updateStudentProfile(formData: FormData) {
     profileData.firstname = formData.get("firstname") as string;
   if (formData.get("lastname"))
     profileData.lastname = formData.get("lastname") as string;
-  if (formData.get("bio")) profileData.bio = formData.get("bio") as string;
+  if (formData.get("graduation_type"))
+    profileData.graduation_type = formData.get("graduation_type") as string;
+  if (formData.get("enrollment_date"))
+    profileData.enrollment_date = formData.get("enrollment_date") as string;
+  if (formData.get("graduation_date"))
+    profileData.graduation_date = formData.get("graduation_date") as string;
+  if (formData.get("bio"))
+    profileData.self_promotion = formData.get("bio") as string;
   if (formData.get("education"))
     profileData.education = JSON.parse(formData.get("education") as string);
   if (formData.get("skills"))
     profileData.skills = JSON.parse(formData.get("skills") as string);
   if (formData.get("experience"))
-    profileData.experience = JSON.parse(formData.get("experience") as string);
+    profileData.work_experience = JSON.parse(formData.get("experience") as string);
   if (formData.get("portfolio_url"))
     profileData.portfolio_url = formData.get("portfolio_url") as string;
   if (formData.get("linkedin_url"))

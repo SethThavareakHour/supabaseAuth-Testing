@@ -21,6 +21,9 @@ export default function StudentProfileForm({ userId }: { userId?: string }) {
   const [experience, setExperience] = useState<string[]>([]);
   const [newExperience, setNewExperience] = useState("");
   const [resumeFile, setResumeFile] = useState<File | null>(null);
+  const [graduationType, setGraduationType] = useState<boolean | null>(null);
+  const [enrollmentDate, setEnrollmentDate] = useState<string>("");
+  const [graduationDate, setGraduationDate] = useState<string>("");
 
   useEffect(() => {
     async function loadProfile() {
@@ -31,6 +34,7 @@ export default function StudentProfileForm({ userId }: { userId?: string }) {
         setEducation(response.data.education || []);
         setSkills(response.data.skills || []);
         setExperience(response.data.experience || []);
+        setGraduationType(response.data.graduation_type === "true");
       }
       setIsLoading(false);
     }
@@ -50,6 +54,7 @@ export default function StudentProfileForm({ userId }: { userId?: string }) {
     formData.set("education", JSON.stringify(education));
     formData.set("skills", JSON.stringify(skills));
     formData.set("experience", JSON.stringify(experience));
+    formData.set("graduation_type", graduationType ? "true" : "false");
 
     // Attach resume if selected
     if (resumeFile) {
@@ -93,7 +98,7 @@ export default function StudentProfileForm({ userId }: { userId?: string }) {
           } else {
             setMessage({
               type: "error",
-              text: `Profile saved but resume upload failed: ${uploadResponse.message}`,
+              text: `Profile saved but resume upload failed: ${uploadResponse}`,
             });
           }
         }
@@ -151,7 +156,7 @@ export default function StudentProfileForm({ userId }: { userId?: string }) {
     setExperience(experience.filter((_, i) => i !== index));
   }
 
-   function handleResumeChange(e: React.ChangeEvent<HTMLInputElement>) {
+  function handleResumeChange(e: React.ChangeEvent<HTMLInputElement>) {
     if (e.target.files && e.target.files[0]) {
       setResumeFile(e.target.files[0]);
       // await uploadResume(e.target.files[0]);
@@ -210,7 +215,7 @@ export default function StudentProfileForm({ userId }: { userId?: string }) {
           id="bio"
           name="bio"
           rows={4}
-          defaultValue={profile?.bio || ""}
+          defaultValue={profile?.self_promotion || ""}
           className="mt-1 block w-full rounded-md border border-gray-300 p-2"
         />
       </div>
@@ -326,6 +331,67 @@ export default function StudentProfileForm({ userId }: { userId?: string }) {
               </button>
             </div>
           ))}
+        </div>
+      </div>
+      {/* Enrollment Date */}
+      <div>
+        <label htmlFor="enrollment_date" className="block text-sm font-medium">
+          Enrollment Date
+        </label>
+        <input
+          type="date"
+          id="enrollment_date"
+          name="enrollment_date"
+          value={enrollmentDate}
+          onChange={(e) => setEnrollmentDate(e.target.value)}
+          className="mt-1 block w-full rounded-md border border-gray-300 p-2"
+        />
+      </div>
+
+      {/* Graduation Date */}
+      <div>
+        <label htmlFor="graduation_date" className="block text-sm font-medium">
+          Graduation Date
+        </label>
+        <input
+          type="date"
+          id="graduation_date"
+          name="graduation_date"
+          value={graduationDate}
+          onChange={(e) => setGraduationDate(e.target.value)}
+          className="mt-1 block w-full rounded-md border border-gray-300 p-2"
+        />
+      </div>
+      {/* Graduation Type */}
+      <div>
+        <span className="block text-sm font-medium">Graduation Status</span>
+        <div className="mt-1 space-y-2">
+          <div className="flex items-center">
+            <input
+              type="radio"
+              id="graduation_type_true"
+              name="graduation_type"
+              checked={graduationType === true}
+              onChange={() => setGraduationType(true)}
+              className="h-4 w-4 border-gray-300 text-indigo-600 focus:ring-indigo-500"
+            />
+            <label htmlFor="graduation_type_true" className="ml-2">
+              Graduated
+            </label>
+          </div>
+          <div className="flex items-center">
+            <input
+              type="radio"
+              id="graduation_type_false"
+              name="graduation_type"
+              checked={graduationType === false}
+              onChange={() => setGraduationType(false)}
+              className="h-4 w-4 border-gray-300 text-indigo-600 focus:ring-indigo-500"
+            />
+            <label htmlFor="graduation_type_false" className="ml-2">
+              Not Graduated
+            </label>
+          </div>
         </div>
       </div>
 
