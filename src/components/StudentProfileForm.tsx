@@ -14,16 +14,20 @@ export default function StudentProfileForm({ userId }: { userId?: string }) {
   const [isLoading, setIsLoading] = useState(true);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [message, setMessage] = useState({ type: "", text: "" });
-  const [education, setEducation] = useState<string[]>([]);
-  const [newEducation, setNewEducation] = useState("");
-  const [skills, setSkills] = useState<string[]>([]);
-  const [newSkill, setNewSkill] = useState("");
-  const [experience, setExperience] = useState<string[]>([]);
-  const [newExperience, setNewExperience] = useState("");
+
+  // Form state variables - updated to match database schema
+  const [education, setEducation] = useState("");
+  const [skills, setSkills] = useState("");
+  const [workExperience, setWorkExperience] = useState("");
   const [resumeFile, setResumeFile] = useState<File | null>(null);
   const [graduationType, setGraduationType] = useState<boolean | null>(null);
   const [enrollmentDate, setEnrollmentDate] = useState<string>("");
   const [graduationDate, setGraduationDate] = useState<string>("");
+  const [schoolName, setSchoolName] = useState<string>("");
+  const [major, setMajor] = useState<string>("");
+  const [nativeLanguage, setNativeLanguage] = useState<string>("");
+  const [technicalPromotion, setTechnicalPromotion] = useState<string>("");
+  const [additionalInfo, setAdditionalInfo] = useState<string>("");
 
   useEffect(() => {
     async function loadProfile() {
@@ -31,10 +35,18 @@ export default function StudentProfileForm({ userId }: { userId?: string }) {
       const response = await getStudentProfile(userId);
       if (response.status === "success" && response.data) {
         setProfile(response.data);
-        setEducation(response.data.education || []);
-        setSkills(response.data.skills || []);
-        setExperience(response.data.experience || []);
+        // Set form state with values from database
+        setEducation(response.data.education || "");
+        setSkills(response.data.skills || "");
+        setWorkExperience(response.data.work_experience || "");
         setGraduationType(response.data.graduation_type === "true");
+        setEnrollmentDate(response.data.enrollment_date || "");
+        setGraduationDate(response.data.graduation_date || "");
+        setSchoolName(response.data.school_name || "");
+        setMajor(response.data.major || "");
+        setNativeLanguage(response.data.native_language || "");
+        setTechnicalPromotion(response.data.technical_promotion || "");
+        setAdditionalInfo(response.data.additional_info || "");
       }
       setIsLoading(false);
     }
@@ -50,10 +62,10 @@ export default function StudentProfileForm({ userId }: { userId?: string }) {
     const form = e.target as HTMLFormElement;
     const formData = new FormData(form);
 
-    formData.set("userId", userId || ""); // Ensure userId is included
-    formData.set("education", JSON.stringify(education));
-    formData.set("skills", JSON.stringify(skills));
-    formData.set("experience", JSON.stringify(experience));
+    // Update formData with state values
+    formData.set("education", education);
+    formData.set("skills", skills);
+    formData.set("work_experience", workExperience);
     formData.set("graduation_type", graduationType ? "true" : "false");
 
     // Attach resume if selected
@@ -66,16 +78,35 @@ export default function StudentProfileForm({ userId }: { userId?: string }) {
         "Submitting form data:",
         Object.fromEntries(formData.entries())
       );
-      console.log(formData);
+
       let response;
       if (profile?.id) {
-        formData.set("id", profile.id);
+        // Update existing profile
         response = await updateStudentProfile(formData);
       } else {
-        response = await createStudentProfile(
-          Object.fromEntries(formData.entries())
-        );
-        console.log(response);
+        // Create new profile
+        const profileData: StudentProfile = {
+          student_id: userId,
+          firstname: formData.get("firstname") as string,
+          lastname: formData.get("lastname") as string,
+          self_promotion: formData.get("self_promotion") as string,
+          education: education,
+          skills: skills,
+          work_experience: workExperience,
+          graduation_type: graduationType ? "true" : "false",
+          enrollment_date: enrollmentDate,
+          graduation_date: graduationDate,
+          school_name: schoolName,
+          major: major,
+          native_language: nativeLanguage,
+          technical_promotion: technicalPromotion,
+          additional_info: additionalInfo,
+          portfolio_url: formData.get("portfolio_url") as string,
+          linkedin_url: formData.get("linkedin_url") as string,
+          github_url: formData.get("github_url") as string,
+        };
+
+        response = await createStudentProfile(profileData);
       }
 
       console.log("API Response:", response);
@@ -89,7 +120,7 @@ export default function StudentProfileForm({ userId }: { userId?: string }) {
           console.log("Uploading resume file:", resumeFile);
           const uploadResponse = await uploadResume(resumeFile);
           console.log("Resume Upload Response:", uploadResponse);
-          console.log(uploadResponse);
+
           if (uploadResponse.status === "success") {
             setMessage({
               type: "success",
@@ -98,7 +129,7 @@ export default function StudentProfileForm({ userId }: { userId?: string }) {
           } else {
             setMessage({
               type: "error",
-              text: `Profile saved but resume upload failed: ${uploadResponse}`,
+              text: `Profile saved but resume upload failed: ${uploadResponse.message}`,
             });
           }
         }
@@ -123,43 +154,9 @@ export default function StudentProfileForm({ userId }: { userId?: string }) {
     }
   }
 
-  function removeEducation(index: number) {
-    setEducation(education.filter((_, i) => i !== index));
-  }
-
-  function addEducation() {
-    if (newEducation.trim()) {
-      setEducation([...education, newEducation.trim()]);
-      setNewEducation("");
-    }
-  }
-
-  function addSkill() {
-    if (newSkill.trim()) {
-      setSkills([...skills, newSkill.trim()]);
-      setNewSkill("");
-    }
-  }
-
-  function removeSkill(index: number) {
-    setSkills(skills.filter((_, i) => i !== index));
-  }
-
-  function addExperience() {
-    if (newExperience.trim()) {
-      setExperience([...experience, newExperience.trim()]);
-      setNewExperience("");
-    }
-  }
-
-  function removeExperience(index: number) {
-    setExperience(experience.filter((_, i) => i !== index));
-  }
-
   function handleResumeChange(e: React.ChangeEvent<HTMLInputElement>) {
     if (e.target.files && e.target.files[0]) {
       setResumeFile(e.target.files[0]);
-      // await uploadResume(e.target.files[0]);
     }
   }
 
@@ -207,132 +204,149 @@ export default function StudentProfileForm({ userId }: { userId?: string }) {
         </div>
       </div>
 
+      {/* Self Promotion / Bio */}
       <div>
-        <label htmlFor="bio" className="block text-sm font-medium">
+        <label htmlFor="self_promotion" className="block text-sm font-medium">
           Bio
         </label>
         <textarea
-          id="bio"
-          name="bio"
+          id="self_promotion"
+          name="self_promotion"
           rows={4}
           defaultValue={profile?.self_promotion || ""}
           className="mt-1 block w-full rounded-md border border-gray-300 p-2"
         />
       </div>
 
-      {/* Education */}
+      {/* Technical Promotion */}
       <div>
-        <label className="block text-sm font-medium">Education</label>
-        <div className="mt-1 flex">
+        <label
+          htmlFor="technical_promotion"
+          className="block text-sm font-medium"
+        >
+          Technical Skills Summary
+        </label>
+        <textarea
+          id="technical_promotion"
+          name="technical_promotion"
+          rows={3}
+          value={technicalPromotion}
+          onChange={(e) => setTechnicalPromotion(e.target.value)}
+          className="mt-1 block w-full rounded-md border border-gray-300 p-2"
+          placeholder="Summarize your technical expertise and achievements"
+        />
+      </div>
+
+      {/* School Information */}
+      <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+        <div>
+          <label htmlFor="school_name" className="block text-sm font-medium">
+            School Name
+          </label>
           <input
             type="text"
-            value={newEducation}
-            onChange={(e) => setNewEducation(e.target.value)}
-            placeholder="Add education (e.g., BS Computer Science, Stanford University)"
-            className="block w-full rounded-md border border-gray-300 p-2"
+            id="school_name"
+            name="school_name"
+            value={schoolName}
+            onChange={(e) => setSchoolName(e.target.value)}
+            className="mt-1 block w-full rounded-md border border-gray-300 p-2"
           />
-          <button
-            type="button"
-            onClick={addEducation}
-            className="ml-2 px-4 py-2 bg-blue-500 text-white rounded-md"
-          >
-            Add
-          </button>
         </div>
-        <div className="mt-2 space-y-2">
-          {education.map((edu, index) => (
-            <div
-              key={index}
-              className="flex justify-between items-center p-2 bg-gray-100 rounded-md"
-            >
-              <span>{edu}</span>
-              <button
-                type="button"
-                onClick={() => removeEducation(index)}
-                className="text-red-500"
-              >
-                Remove
-              </button>
-            </div>
-          ))}
+
+        <div>
+          <label htmlFor="major" className="block text-sm font-medium">
+            Major / Field of Study
+          </label>
+          <input
+            type="text"
+            id="major"
+            name="major"
+            value={major}
+            onChange={(e) => setMajor(e.target.value)}
+            className="mt-1 block w-full rounded-md border border-gray-300 p-2"
+          />
         </div>
+      </div>
+
+      {/* Education */}
+      <div>
+        <label htmlFor="education" className="block text-sm font-medium">
+          Education History
+        </label>
+        <textarea
+          id="education"
+          name="education"
+          rows={3}
+          value={education}
+          onChange={(e) => setEducation(e.target.value)}
+          className="mt-1 block w-full rounded-md border border-gray-300 p-2"
+          placeholder="List your educational background (degrees, certifications, etc.)"
+        />
       </div>
 
       {/* Skills */}
       <div>
-        <label className="block text-sm font-medium">Skills</label>
-        <div className="mt-1 flex">
-          <input
-            type="text"
-            value={newSkill}
-            onChange={(e) => setNewSkill(e.target.value)}
-            placeholder="Add skill (e.g., JavaScript, React, Node.js)"
-            className="block w-full rounded-md border border-gray-300 p-2"
-          />
-          <button
-            type="button"
-            onClick={addSkill}
-            className="ml-2 px-4 py-2 bg-blue-500 text-white rounded-md"
-          >
-            Add
-          </button>
-        </div>
-        <div className="mt-2 flex flex-wrap gap-2">
-          {skills.map((skill, index) => (
-            <div
-              key={index}
-              className="flex items-center px-3 py-1 bg-blue-100 rounded-full"
-            >
-              <span>{skill}</span>
-              <button
-                type="button"
-                onClick={() => removeSkill(index)}
-                className="ml-2 text-red-500"
-              >
-                ×
-              </button>
-            </div>
-          ))}
-        </div>
+        <label htmlFor="skills" className="block text-sm font-medium">
+          Skills
+        </label>
+        <textarea
+          id="skills"
+          name="skills"
+          rows={3}
+          value={skills}
+          onChange={(e) => setSkills(e.target.value)}
+          className="mt-1 block w-full rounded-md border border-gray-300 p-2"
+          placeholder="List your skills (e.g., JavaScript, React, Node.js, etc.)"
+        />
       </div>
 
-      {/* Experience */}
+      {/* Work Experience */}
       <div>
-        <label className="block text-sm font-medium">Experience</label>
-        <div className="mt-1 flex">
-          <input
-            type="text"
-            value={newExperience}
-            onChange={(e) => setNewExperience(e.target.value)}
-            placeholder="Add experience (e.g., Software Engineer at Google, 2020-2022)"
-            className="block w-full rounded-md border border-gray-300 p-2"
-          />
-          <button
-            type="button"
-            onClick={addExperience}
-            className="ml-2 px-4 py-2 bg-blue-500 text-white rounded-md"
-          >
-            Add
-          </button>
-        </div>
-        <div className="mt-2 space-y-2">
-          {experience.map((exp, index) => (
-            <div
-              key={index}
-              className="flex justify-between items-center p-2 bg-gray-100 rounded-md"
-            >
-              <span>{exp}</span>
-              <button
-                type="button"
-                onClick={() => removeExperience(index)}
-                className="text-red-500"
-              >
-                Remove
-              </button>
-            </div>
-          ))}
-        </div>
+        <label htmlFor="work_experience" className="block text-sm font-medium">
+          Work Experience
+        </label>
+        <textarea
+          id="work_experience"
+          name="work_experience"
+          rows={4}
+          value={workExperience}
+          onChange={(e) => setWorkExperience(e.target.value)}
+          className="mt-1 block w-full rounded-md border border-gray-300 p-2"
+          placeholder="List your work experience (positions, companies, dates, etc.)"
+        />
       </div>
+
+      {/* Additional Info */}
+      <div>
+        <label htmlFor="additional_info" className="block text-sm font-medium">
+          Additional Information
+        </label>
+        <textarea
+          id="additional_info"
+          name="additional_info"
+          rows={3}
+          value={additionalInfo}
+          onChange={(e) => setAdditionalInfo(e.target.value)}
+          className="mt-1 block w-full rounded-md border border-gray-300 p-2"
+          placeholder="Any other information you'd like to share"
+        />
+      </div>
+
+      {/* Native Language */}
+      <div>
+        <label htmlFor="native_language" className="block text-sm font-medium">
+          Native Language
+        </label>
+        <input
+          type="text"
+          id="native_language"
+          name="native_language"
+          value={nativeLanguage}
+          onChange={(e) => setNativeLanguage(e.target.value)}
+          className="mt-1 block w-full rounded-md border border-gray-300 p-2"
+        />
+      </div>
+
       {/* Enrollment Date */}
       <div>
         <label htmlFor="enrollment_date" className="block text-sm font-medium">
@@ -362,6 +376,7 @@ export default function StudentProfileForm({ userId }: { userId?: string }) {
           className="mt-1 block w-full rounded-md border border-gray-300 p-2"
         />
       </div>
+
       {/* Graduation Type */}
       <div>
         <span className="block text-sm font-medium">Graduation Status</span>

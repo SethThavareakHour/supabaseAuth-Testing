@@ -15,7 +15,7 @@ export default function BrowseStudentProfilesPage() {
   const [page, setPage] = useState(1);
   const [searchSkills, setSearchSkills] = useState<string[]>([]);
   const [newSkill, setNewSkill] = useState("");
-  const [keywords, setKeywords] = useState("");
+  const [keywords, setKeywords] = useState<string>(""); 
   const [education, setEducation] = useState("");
   const limit = 10;
 
@@ -30,7 +30,7 @@ export default function BrowseStudentProfilesPage() {
       if (searchSkills.length > 0 || keywords || education) {
         // Search with filters
         response = await searchStudentProfiles({
-          skills: searchSkills,
+          // skills: searchSkills,
           keywords,
           education,
           limit,
@@ -47,9 +47,13 @@ export default function BrowseStudentProfilesPage() {
       } else {
         setError(response.message || "Failed to load profiles");
       }
-    } catch (err) {
-      setError("An unexpected error occurred");
-      console.error(err);
+    } catch (error) {
+      if (error instanceof Error) {
+        setError(error.message);
+      } else {
+        setError("An unknown error occurred");
+      }
+      console.error(error);
     } finally {
       setIsLoading(false);
     }
@@ -85,6 +89,46 @@ export default function BrowseStudentProfilesPage() {
   }
 
   const totalPages = Math.ceil(totalCount / limit);
+
+  // Function to generate pagination numbers
+  function getPaginationNumbers() {
+    if (totalPages <= 5) {
+      // If we have 5 or fewer pages, show all of them
+      return Array.from({ length: totalPages }, (_, i) => i + 1);
+    }
+    
+    // Otherwise, create a window around the current page
+    let pages = [];
+    const windowSize = 2;
+    
+    // Always show first page
+    pages.push(1);
+    
+    // Add ellipsis if needed
+    if (page > windowSize + 1) {
+      pages.push(-1); // -1 represents ellipsis
+    }
+    
+    // Add pages around current page
+    const startPage = Math.max(2, page - windowSize);
+    const endPage = Math.min(totalPages - 1, page + windowSize);
+    
+    for (let i = startPage; i <= endPage; i++) {
+      pages.push(i);
+    }
+    
+    // Add ellipsis if needed
+    if (page < totalPages - windowSize) {
+      pages.push(-2); // -2 represents ellipsis (using different value to maintain unique keys)
+    }
+    
+    // Always show last page
+    if (totalPages > 1) {
+      pages.push(totalPages);
+    }
+    
+    return pages;
+  }
 
   return (
     <div className="max-w-6xl mx-auto py-8 px-4">
@@ -130,6 +174,12 @@ export default function BrowseStudentProfilesPage() {
                 onChange={(e) => setNewSkill(e.target.value)}
                 placeholder="Add skill to search for"
                 className="block w-full rounded-md border border-gray-300 p-2"
+                onKeyDown={(e) => {
+                  if (e.key === 'Enter') {
+                    e.preventDefault();
+                    addSkill();
+                  }
+                }}
               />
               <button
                 type="button"
@@ -152,6 +202,7 @@ export default function BrowseStudentProfilesPage() {
                       type="button"
                       onClick={() => removeSkill(skill)}
                       className="ml-2 text-red-500"
+                      aria-label={`Remove ${skill}`}
                     >
                       ×
                     </button>
@@ -207,96 +258,105 @@ export default function BrowseStudentProfilesPage() {
 
           {/* Profiles List */}
           <div className="space-y-4">
-            {profiles.map((profile: any) => (
-              <div key={profile.id} className="bg-white p-4 rounded-lg shadow">
-                <div className="flex justify-between items-start">
-                  <div>
-                    <h2 className="text-xl font-semibold">
-                      {profile.firstname} {profile.lastname}
-                    </h2>
-                    <p className="text-gray-600">{profile.email}</p>
+            {profiles.length === 0 && !isLoading ? (
+              <div className="text-center py-8 bg-white p-4 rounded-lg shadow">
+                No student profiles found matching your criteria.
+              </div>
+            ) : (
+              profiles.map((profile: any) => (
+                <div key={profile.id || profile.user_id} className="bg-white p-4 rounded-lg shadow">
+                  <div className="flex justify-between items-start">
+                    <div>
+                      <h2 className="text-xl font-semibold">
+                        {profile.firstname} {profile.lastname}
+                      </h2>
+                      {profile.email && <p className="text-gray-600">{profile.email}</p>}
+                      
+                      {profile.education && (
+                        <p className="text-gray-600 mt-1">{profile.education}</p>
+                      )}
 
-                    {profile.bio && (
-                      <p className="mt-2 line-clamp-2">{profile.bio}</p>
-                    )}
-                  </div>
-
-                  <Link
-                    href={`/profile/${profile.user_id}`}
-                    className="px-4 py-2 bg-blue-100 text-blue-700 rounded hover:bg-blue-200"
-                  >
-                    View Profile
-                  </Link>
-                </div>
-
-                {profile.skills && profile.skills.length > 0 && (
-                  <div className="mt-3">
-                    <div className="flex flex-wrap gap-2">
-                      {profile.skills
-                        .slice(0, 5)
-                        .map((skill: string, index: number) => (
-                          <span
-                            key={index}
-                            className="px-2 py-1 bg-gray-100 text-gray-800 text-sm rounded"
-                          >
-                            {skill}
-                          </span>
-                        ))}
-                      {profile.skills.length > 5 && (
-                        <span className="px-2 py-1 bg-gray-100 text-gray-800 text-sm rounded">
-                          +{profile.skills.length - 5} more
-                        </span>
+                      {profile.bio && (
+                        <p className="mt-2 line-clamp-2">{profile.bio}</p>
                       )}
                     </div>
+
+                    <Link
+                      href={`/profile/${profile.user_id}`}
+                      className="px-4 py-2 bg-blue-100 text-blue-700 rounded hover:bg-blue-200"
+                    >
+                      View Profile
+                    </Link>
                   </div>
-                )}
-              </div>
-            ))}
+
+                  {profile.skills && profile.skills.length > 0 && (
+                    <div className="mt-3">
+                      <div className="flex flex-wrap gap-2">
+                        {profile.skills
+                          .slice(0, 5)
+                          .map((skill: string, index: number) => (
+                            <span
+                              key={index}
+                              className="px-2 py-1 bg-gray-100 text-gray-800 text-sm rounded"
+                            >
+                              {skill}
+                            </span>
+                          ))}
+                        {profile.skills.length > 5 && (
+                          <span className="px-2 py-1 bg-gray-100 text-gray-800 text-sm rounded">
+                            +{profile.skills.length - 5} more
+                          </span>
+                        )}
+                      </div>
+                    </div>
+                  )}
+                </div>
+              ))
+            )}
           </div>
 
           {/* Pagination */}
           {totalPages > 1 && (
             <div className="flex justify-center mt-6">
-              <nav className="flex items-center space-x-2">
+              <nav className="flex items-center space-x-2" aria-label="Pagination">
                 <button
                   onClick={() => setPage(page > 1 ? page - 1 : 1)}
                   disabled={page === 1}
                   className={`px-3 py-1 rounded-md ${
                     page === 1
-                      ? "bg-gray-100 text-gray-400"
+                      ? "bg-gray-100 text-gray-400 cursor-not-allowed"
                       : "bg-gray-200 text-gray-700 hover:bg-gray-300"
                   }`}
+                  aria-label="Previous page"
                 >
                   Previous
                 </button>
 
-                {Array.from({ length: Math.min(5, totalPages) }, (_, i) => {
-                  // Create a window of pages around the current page
-                  const windowSize = 2;
-                  const start = Math.max(1, page - windowSize);
-                  const end = Math.min(totalPages, page + windowSize);
-
-                  // If we're at the start, show more pages after
-                  const pagesToShow = end - start + 1;
-                  const pageNum =
-                    i + start + Math.max(0, windowSize - (page - 1));
-
-                  if (pageNum <= totalPages) {
+                {getPaginationNumbers().map((pageNum, index) => {
+                  // If pageNum is negative, it represents an ellipsis
+                  if (pageNum < 0) {
                     return (
-                      <button
-                        key={pageNum}
-                        onClick={() => setPage(pageNum)}
-                        className={`px-3 py-1 rounded-md ${
-                          page === pageNum
-                            ? "bg-blue-500 text-white"
-                            : "bg-gray-200 text-gray-700 hover:bg-gray-300"
-                        }`}
-                      >
-                        {pageNum}
-                      </button>
+                      <span key={`ellipsis-${pageNum}`} className="px-3 py-1">
+                        ...
+                      </span>
                     );
                   }
-                  return null;
+                  
+                  return (
+                    <button
+                      key={pageNum}
+                      onClick={() => setPage(pageNum)}
+                      className={`px-3 py-1 rounded-md ${
+                        page === pageNum
+                          ? "bg-blue-500 text-white"
+                          : "bg-gray-200 text-gray-700 hover:bg-gray-300"
+                      }`}
+                      aria-label={`Page ${pageNum}`}
+                      aria-current={page === pageNum ? "page" : undefined}
+                    >
+                      {pageNum}
+                    </button>
+                  );
                 })}
 
                 <button
@@ -306,9 +366,10 @@ export default function BrowseStudentProfilesPage() {
                   disabled={page === totalPages}
                   className={`px-3 py-1 rounded-md ${
                     page === totalPages
-                      ? "bg-gray-100 text-gray-400"
+                      ? "bg-gray-100 text-gray-400 cursor-not-allowed"
                       : "bg-gray-200 text-gray-700 hover:bg-gray-300"
                   }`}
+                  aria-label="Next page"
                 >
                   Next
                 </button>

@@ -2,24 +2,30 @@
 
 import { createClient } from "@/utils/supabase/server";
 import { revalidatePath } from "next/cache";
-import { getUserSession } from "@/actions/auth"; // Assuming this is the path to your existing auth actions
-// Type definition for student profile
+import { getUserSession } from "@/actions/auth";
+
+// Type definition for student profile aligned with the database schema
 export type StudentProfile = {
   id?: string;
-  user_id?: string;
-  email?: string;
-  firstname?: string;
-  lastname?: string;
+  student_id?: string;
   graduation_type?: string;
-  self_promotion?: string;
-  education?: string[];
+  school_name?: string;
   enrollment_date?: string;
   graduation_date?: string;
-  skills?: string[];
-  work_experience?: string[];
-  portfolio_url?: string;
-  linkedin_url?: string;
+  major?: string;
+  native_language?: string;
+  skills?: string;
+  work_experience?: string;
+  self_promotion?: string;
+  technical_promotion?: string;
+  additional_info?: string;
+  firstname?: string;
+  lastname?: string;
+  education?: string;
+  email?: string;
   github_url?: string;
+  linkedin_url?: string;
+  portfolio_url?: string;
   resume_url?: string;
   created_at?: string;
   updated_at?: string;
@@ -31,7 +37,7 @@ export async function createStudentProfile(formData: StudentProfile) {
   if (!session || !session.user) {
     return { status: "error", message: "Not authenticated" };
   }
-  console.log("Form Data", formData);
+  
   // Check if user role is student
   if (session.user.user_metadata?.role !== "student") {
     return {
@@ -44,45 +50,48 @@ export async function createStudentProfile(formData: StudentProfile) {
 
   // Check if profile already exists
   const { data: existingProfile } = await supabase
-    .from("student_profiles")
+    .from("student_detail")
     .select("*")
-    .eq("user_id", session.user.id)
+    .eq("student_id", session.user.id)
     .single();
 
   if (existingProfile) {
     return {
-      status: "error_1",
+      status: "error",
       message: "Profile already exists. Use update instead.",
     };
   }
 
-  // Prepare data from form
+  // Prepare data from form - now matched to database schema
   const profileData = {
     student_id: session.user.id,
-    email: session.user.email,
-    firstname: formData.firstname,
-    lastname: formData.lastname,
-    self_promotion: formData.self_promotion,
+    graduation_type: formData.graduation_type,
+    school_name: formData.school_name,
     enrollment_date: formData.enrollment_date,
     graduation_date: formData.graduation_date,
-    graduation_type: formData.graduation_type,
-    education: formData.education,
+    major: formData.major,
+    native_language: formData.native_language,
     skills: formData.skills,
     work_experience: formData.work_experience,
-    portfolio_url: formData.portfolio_url,
-    linkedin_url: formData.linkedin_url,
+    self_promotion: formData.self_promotion,
+    technical_promotion: formData.technical_promotion,
+    additional_info: formData.additional_info,
+    firstname: formData.firstname,
+    lastname: formData.lastname,
+    education: formData.education,
+    email: session.user.email,
     github_url: formData.github_url,
+    linkedin_url: formData.linkedin_url,
+    portfolio_url: formData.portfolio_url,
     resume_url: formData.resume_url,
   };
-  console.log("Profile Data", profileData);
+  
   const { data, error } = await supabase
     .from("student_detail")
     .insert(profileData);
-  // .select()
-  // .single();
-  console.log(error);
+
   if (error) {
-    return { status: "error_2", message: error.message };
+    return { status: "error", message: error.message };
   }
 
   revalidatePath("/profile");
@@ -104,9 +113,9 @@ export async function getStudentProfile(userId?: string) {
   }
 
   const { data, error } = await supabase
-    .from("student_profiles")
+    .from("student_detail")
     .select("*")
-    .eq("user_id", queryUserId)
+    .eq("student_id", queryUserId)
     .single();
 
   if (error) {
@@ -136,7 +145,7 @@ export async function getAllStudentProfiles(
   }
 
   const { data, error, count } = await supabase
-    .from("student_profiles")
+    .from("student_detail")
     .select("*", { count: "exact" })
     .range(options.offset, options.offset + options.limit - 1);
 
@@ -158,9 +167,9 @@ export async function updateStudentProfile(formData: FormData) {
 
   // Check if profile exists
   const { data: existingProfile } = await supabase
-    .from("student_profiles")
+    .from("student_detail")
     .select("*")
-    .eq("user_id", session.user.id)
+    .eq("student_id", session.user.id)
     .single();
 
   if (!existingProfile) {
@@ -170,7 +179,7 @@ export async function updateStudentProfile(formData: FormData) {
     };
   }
 
-  // Prepare data from form
+  // Prepare data from form - now matched to database schema
   const profileData: Partial<StudentProfile> = {};
 
   // Only update fields that were provided in the form
@@ -180,18 +189,28 @@ export async function updateStudentProfile(formData: FormData) {
     profileData.lastname = formData.get("lastname") as string;
   if (formData.get("graduation_type"))
     profileData.graduation_type = formData.get("graduation_type") as string;
+  if (formData.get("school_name"))
+    profileData.school_name = formData.get("school_name") as string;
   if (formData.get("enrollment_date"))
     profileData.enrollment_date = formData.get("enrollment_date") as string;
   if (formData.get("graduation_date"))
     profileData.graduation_date = formData.get("graduation_date") as string;
-  if (formData.get("bio"))
-    profileData.self_promotion = formData.get("bio") as string;
-  if (formData.get("education"))
-    profileData.education = JSON.parse(formData.get("education") as string);
+  if (formData.get("major"))
+    profileData.major = formData.get("major") as string;
+  if (formData.get("native_language"))
+    profileData.native_language = formData.get("native_language") as string;
   if (formData.get("skills"))
-    profileData.skills = JSON.parse(formData.get("skills") as string);
-  if (formData.get("experience"))
-    profileData.work_experience = JSON.parse(formData.get("experience") as string);
+    profileData.skills = formData.get("skills") as string;
+  if (formData.get("work_experience"))
+    profileData.work_experience = formData.get("work_experience") as string;
+  if (formData.get("self_promotion"))
+    profileData.self_promotion = formData.get("self_promotion") as string;
+  if (formData.get("technical_promotion"))
+    profileData.technical_promotion = formData.get("technical_promotion") as string;
+  if (formData.get("additional_info"))
+    profileData.additional_info = formData.get("additional_info") as string;
+  if (formData.get("education"))
+    profileData.education = formData.get("education") as string;
   if (formData.get("portfolio_url"))
     profileData.portfolio_url = formData.get("portfolio_url") as string;
   if (formData.get("linkedin_url"))
@@ -202,9 +221,9 @@ export async function updateStudentProfile(formData: FormData) {
     profileData.resume_url = formData.get("resume_url") as string;
 
   const { data, error } = await supabase
-    .from("student_profiles")
+    .from("student_detail") // Corrected table name
     .update(profileData)
-    .eq("user_id", session.user.id)
+    .eq("student_id", session.user.id)
     .select()
     .single();
 
@@ -226,9 +245,9 @@ export async function deleteStudentProfile() {
   const supabase = await createClient();
 
   const { error } = await supabase
-    .from("student_profiles")
+    .from("student_detail")
     .delete()
-    .eq("user_id", session.user.id);
+    .eq("student_id", session.user.id);
 
   if (error) {
     return { status: "error", message: error.message };
@@ -254,7 +273,7 @@ export async function uploadResume(file: File) {
     .upload(fileName, file);
 
   if (uploadError) {
-    return { status: "error, file_loading", message: uploadError.message };
+    return { status: "error", message: uploadError.message };
   }
 
   // Get public URL
@@ -264,9 +283,9 @@ export async function uploadResume(file: File) {
 
   // Update profile with resume URL
   const { error: updateError } = await supabase
-    .from("student_profiles")
+    .from("student_detail")
     .update({ resume_url: publicURLData.publicUrl })
-    .eq("user_id", session.user.id);
+    .eq("student_id", session.user.id);
 
   if (updateError) {
     return { status: "error", message: updateError.message };
@@ -278,7 +297,7 @@ export async function uploadResume(file: File) {
 
 // Search student profiles by skills, education, etc.
 export async function searchStudentProfiles(searchParams: {
-  skills?: string[];
+  skills?: string;
   education?: string;
   keywords?: string;
   limit?: number;
@@ -299,23 +318,21 @@ export async function searchStudentProfiles(searchParams: {
     return { status: "error", message: "Unauthorized to search profiles" };
   }
 
-  let query = supabase.from("student_profiles").select("*", { count: "exact" });
+  let query = supabase.from("student_detail").select("*", { count: "exact" });
 
   // Apply filters if provided
-  if (searchParams.skills && searchParams.skills.length > 0) {
-    // Overlap operator for array fields
-    query = query.overlaps("skills", searchParams.skills);
+  if (searchParams.skills) {
+    query = query.ilike("skills", `%${searchParams.skills}%`);
   }
 
   if (searchParams.education) {
-    // Contains operator for array fields (education is array of objects typically)
-    query = query.textSearch("education", searchParams.education);
+    query = query.ilike("education", `%${searchParams.education}%`);
   }
 
   if (searchParams.keywords) {
     // Full text search across multiple fields
     query = query.or(
-      `bio.ilike.%${searchParams.keywords}%,firstname.ilike.%${searchParams.keywords}%,lastname.ilike.%${searchParams.keywords}%`
+      `self_promotion.ilike.%${searchParams.keywords}%,firstname.ilike.%${searchParams.keywords}%,lastname.ilike.%${searchParams.keywords}%`
     );
   }
 
