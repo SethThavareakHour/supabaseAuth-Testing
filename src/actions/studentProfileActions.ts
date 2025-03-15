@@ -37,7 +37,7 @@ export async function createStudentProfile(formData: StudentProfile) {
   if (!session || !session.user) {
     return { status: "error", message: "Not authenticated" };
   }
-  
+
   // Check if user role is student
   if (session.user.user_metadata?.role !== "student") {
     return {
@@ -80,12 +80,9 @@ export async function createStudentProfile(formData: StudentProfile) {
     lastname: formData.lastname,
     education: formData.education,
     email: session.user.email,
-    github_url: formData.github_url,
-    linkedin_url: formData.linkedin_url,
-    portfolio_url: formData.portfolio_url,
     resume_url: formData.resume_url,
   };
-  
+
   const { data, error } = await supabase
     .from("student_detail")
     .insert(profileData);
@@ -112,17 +109,39 @@ export async function getStudentProfile(userId?: string) {
     queryUserId = session.user.id;
   }
 
-  const { data, error } = await supabase
+  // Query student_detail table first
+  const { data: detailData, error: detailError } = await supabase
     .from("student_detail")
     .select("*")
-    .eq("student_id", queryUserId)
-    .single();
+    .eq("student_id", queryUserId);
 
-  if (error) {
-    return { status: "error", message: error.message };
+  if (detailError) {
+    return { status: "error", message: detailError.message };
   }
 
-  return { status: "success", data };
+  // Handle case where no profile exists
+  if (!detailData || detailData.length === 0) {
+    return {
+      status: "success",
+      message: "No profile found",
+      data: null,
+    };
+  }
+
+  // Try to get basic data as well to merge them
+  const { data: basicData, error: basicError } = await supabase
+    .from("student_basic")
+    .select("*")
+    .eq("student_id", queryUserId);
+
+  let profileData = detailData[0];
+
+  // If basic data exists, merge it with the detail data
+  if (!basicError && basicData && basicData.length > 0) {
+    profileData = { ...basicData[0], ...profileData };
+  }
+
+  return { status: "success", data: profileData };
 }
 
 // Get all student profiles (for recruiters or admin)
@@ -206,17 +225,13 @@ export async function updateStudentProfile(formData: FormData) {
   if (formData.get("self_promotion"))
     profileData.self_promotion = formData.get("self_promotion") as string;
   if (formData.get("technical_promotion"))
-    profileData.technical_promotion = formData.get("technical_promotion") as string;
+    profileData.technical_promotion = formData.get(
+      "technical_promotion"
+    ) as string;
   if (formData.get("additional_info"))
     profileData.additional_info = formData.get("additional_info") as string;
   if (formData.get("education"))
     profileData.education = formData.get("education") as string;
-  if (formData.get("portfolio_url"))
-    profileData.portfolio_url = formData.get("portfolio_url") as string;
-  if (formData.get("linkedin_url"))
-    profileData.linkedin_url = formData.get("linkedin_url") as string;
-  if (formData.get("github_url"))
-    profileData.github_url = formData.get("github_url") as string;
   if (formData.get("resume_url"))
     profileData.resume_url = formData.get("resume_url") as string;
 
@@ -236,7 +251,7 @@ export async function updateStudentProfile(formData: FormData) {
 }
 
 // Delete student profile
-export async function deleteStudentProfile() {
+export async function deleteStudentProfile(userId: string) {
   const session = await getUserSession();
   if (!session || !session.user) {
     return { status: "error", message: "Not authenticated" };
