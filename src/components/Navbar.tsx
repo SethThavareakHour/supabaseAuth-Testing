@@ -19,6 +19,9 @@ const Navbar = async () => {
           <Link href="/private">Private</Link>
         </div>
         <div className="flex items-center gap-x-5">
+          <Link href="/student-profile">StudentProfile</Link>
+        </div>
+        <div className="flex items-center gap-x-5">
         {!user ? (
             <Link href="/login">
               <div className="ng-blue-600 text-white text-sm px-4">
